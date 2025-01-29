@@ -5,7 +5,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+.gitignore
 # Python cache and compiled files
 __pycache__/
 *.py[cod]
