@@ -115,36 +115,29 @@ class EquipmentDialog(QDialog):
         self.ipv6_decimal = QLineEdit()
         self.ipv6_binary = QLineEdit()
 
-        # Date/Time Inputs as QLineEdit
-        date_time_layout = QHBoxLayout()
-        
+        # Date/Time inputs as separate fields in the form layout
         self.day_input = QLineEdit()
-        self.day_input.setPlaceholderText("DD (1-31)")
-        date_time_layout.addWidget(QLabel("Day:"))
-        date_time_layout.addWidget(self.day_input)
-
+        self.day_input.setPlaceholderText("Day (1-31)")
+        layout.addRow("Day:", self.day_input)
+        
         self.month_input = QLineEdit()
-        self.month_input.setPlaceholderText("MM (1-12)")
-        date_time_layout.addWidget(QLabel("Month:"))
-        date_time_layout.addWidget(self.month_input)
-
+        self.month_input.setPlaceholderText("Month (1-12)")
+        layout.addRow("Month:", self.month_input)
+        
         self.year_input = QLineEdit()
-        self.year_input.setPlaceholderText("YYYY")
-        date_time_layout.addWidget(QLabel("Year:"))
-        date_time_layout.addWidget(self.year_input)
-
+        self.year_input.setPlaceholderText("Year (YYYY)")
+        layout.addRow("Year:", self.year_input)
+        
         self.hour_input = QLineEdit()
-        self.hour_input.setPlaceholderText("HH (0-23)")
-        date_time_layout.addWidget(QLabel("Hour:"))
-        date_time_layout.addWidget(self.hour_input)
+        self.hour_input.setPlaceholderText("Hour (0-23)")
+        layout.addRow("Hour:", self.hour_input)
 
-        # Add all widgets to layout
+        # Add all other widgets to layout
         layout.addRow("Description:", self.description)
         layout.addRow("IPv4 Decimal:", self.ipv4_decimal)
         layout.addRow("IPv4 Binary:", self.ipv4_binary)
         layout.addRow("IPv6 Decimal:", self.ipv6_decimal)
         layout.addRow("IPv6 Binary:", self.ipv6_binary)
-        layout.addRow("Start Date/Time:", date_time_layout)
 
         # Comboboxes
         self.wilaya_combo = QComboBox()
@@ -167,6 +160,7 @@ class EquipmentDialog(QDialog):
         else:
             self.set_current_datetime()
 
+    # The rest of the methods remain unchanged
     def set_current_datetime(self):
         """Set default values to current date/time"""
         now = QDateTime.currentDateTime()
@@ -203,7 +197,6 @@ class EquipmentDialog(QDialog):
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
             return None
-
 
     def load_wilayas(self):
         conn = sqlite3.connect("database.db")
@@ -305,7 +298,6 @@ class EquipmentDialog(QDialog):
             QMessageBox.critical(self, "Error", f"Database error: {str(e)}")
         finally:
             conn.close()
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -489,34 +481,120 @@ class MainWindow(QMainWindow):
         conn.close()
 
     def show_wilayas(self):
-        # Query the database to get all wilayas
         conn = sqlite3.connect("database.db")
-        cursor = conn.execute("SELECT code_wilaya, wilaya_name FROM wilaya")
+        cursor = conn.execute("SELECT code_wilaya, wilaya_name FROM wilaya ORDER BY code_wilaya")
         wilayas = cursor.fetchall()
         conn.close()
 
-        # Prepare the message string
-        message = "Wilayas in Database:\n\n"
-        for code, name in wilayas:
-            message += f"Code: {code}, Name: {name}\n"
+        page_size = 20
+        total_pages = (len(wilayas) + page_size - 1) // page_size
+        current_page = 0
 
-        # Show the message in a message box
-        QMessageBox.information(self, "Wilayas", message)
+        def update_display():
+            start = current_page * page_size
+            end = start + page_size
+            page_wilayas = wilayas[start:end]
+            text = "\n".join(f"{code} - {name}" for code, name in page_wilayas)
+            text_display.setPlainText(text)
+            page_label.setText(f"Page {current_page + 1} of {total_pages}")
+            prev_button.setEnabled(current_page > 0)
+            next_button.setEnabled(current_page < total_pages - 1)
 
-    def show_equipment_types(self):
-        # Query the database to get all equipment types
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Wilayas Database")
+        dialog.setMinimumSize(400, 500)
+
+        layout = QVBoxLayout()
+        text_display = QTextEdit()
+        text_display.setReadOnly(True)
+
+        nav_layout = QHBoxLayout()
+        page_label = QLabel()
+        prev_button = QPushButton("Previous")
+        next_button = QPushButton("Next")
+
+        def prev_page():
+            nonlocal current_page
+            current_page -= 1
+            update_display()
+
+        def next_page():
+            nonlocal current_page
+            current_page += 1
+            update_display()
+
+        prev_button.clicked.connect(prev_page)
+        next_button.clicked.connect(next_page)
+
+        nav_layout.addWidget(prev_button)
+        nav_layout.addWidget(page_label)
+        nav_layout.addWidget(next_button)
+
+        layout.addWidget(text_display)
+        layout.addLayout(nav_layout)
+        dialog.setLayout(layout)
+
+        update_display()
+        dialog.exec_()
+
+
+    def show_equipment_types(self):  # Moved inside MainWindow class
         conn = sqlite3.connect("database.db")
-        cursor = conn.execute("SELECT code_type, type_name FROM equipment_type")
+        cursor = conn.execute("SELECT code_type, type_name FROM equipment_type ORDER BY code_type")
         types = cursor.fetchall()
         conn.close()
 
-        # Prepare the message string
-        message = "Equipment Types in Database:\n\n"
-        for code, name in types:
-            message += f"Code: {code}, Type: {name}\n"
+        page_size = 20
+        total_pages = (len(types) + page_size - 1) // page_size
+        current_page = 0
 
-        # Show the message in a message box
-        QMessageBox.information(self, "Equipment Types", message)
+        def update_display():
+            start = current_page * page_size
+            end = start + page_size
+            page_types = types[start:end]
+            text = "\n".join(f"Code: {code}, Type: {name}" for code, name in page_types)
+            text_display.setPlainText(text)
+            page_label.setText(f"Page {current_page + 1} of {total_pages}")
+            prev_button.setEnabled(current_page > 0)
+            next_button.setEnabled(current_page < total_pages - 1)
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Equipment Types")
+        dialog.setMinimumSize(400, 500)
+
+        layout = QVBoxLayout()
+        text_display = QTextEdit()
+        text_display.setReadOnly(True)
+
+        nav_layout = QHBoxLayout()
+        page_label = QLabel()
+        prev_button = QPushButton("Previous")
+        next_button = QPushButton("Next")
+
+        def prev_page():
+            nonlocal current_page
+            current_page -= 1
+            update_display()
+
+        def next_page():
+            nonlocal current_page
+            current_page += 1
+            update_display()
+
+        prev_button.clicked.connect(prev_page)
+        next_button.clicked.connect(next_page)
+
+        nav_layout.addWidget(prev_button)
+        nav_layout.addWidget(page_label)
+        nav_layout.addWidget(next_button)
+
+        layout.addWidget(text_display)
+        layout.addLayout(nav_layout)
+        dialog.setLayout(layout)
+
+        update_display()
+        dialog.exec_()
+
 
 
 if __name__ == "__main__":
