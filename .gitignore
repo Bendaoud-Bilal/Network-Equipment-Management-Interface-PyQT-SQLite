@@ -3,6 +3,10 @@
 venv/
 .env/
 ENV/
+.venv/
+env/
+.venv\
+env\
 env.bak/
 venv.bak/
 .gitignore
